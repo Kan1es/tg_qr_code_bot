@@ -11,6 +11,7 @@ from aiogram.types import (
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.enums import ParseMode
 from dotenv import load_dotenv
 
 # Загружаем переменные из .env файла
@@ -33,7 +34,8 @@ API_TOKEN = os.getenv('BOT_TOKEN')
 if not API_TOKEN:
     raise ValueError("BOT_TOKEN not found in .env file")
 
-bot = Bot(token=API_TOKEN)
+# Создаем бота с указанием parse_mode
+bot = Bot(token=API_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
 admin_router = Router()
 
@@ -130,7 +132,7 @@ def generate_qr(url: str, user_id: int) -> BufferedInputFile:
 @dp.message(Command("start"))
 async def cmd_start(message: Message):
     await message.answer(
-        "🤖 **QR Designer Bot**\n\n"
+        "<b>🤖 QR Designer Bot</b>\n\n"
         "Создавайте стильные QR-коды за секунды!\n"
         "Просто отправьте ссылку или используйте кнопки ниже:",
         reply_markup=get_main_keyboard()
@@ -140,12 +142,12 @@ async def cmd_start(message: Message):
 @dp.message(Command("design"))
 async def cmd_design(message: Message, state: FSMContext):
     await message.answer(
-        "🎨 Настройка дизайна QR-кода\n\n"
+        "<b>🎨 Настройка дизайна QR-кода</b>\n\n"
         "Введите цвет заливки в HEX формате:\n"
         "• #FF0000 - красный\n"
         "• #0000FF - синий\n"
         "• #000000 - черный (по умолчанию)\n\n"
-        "Пример: #FF5733",
+        "<i>Пример: #FF5733</i>",
         reply_markup=ReplyKeyboardRemove()
     )
     await state.set_state(QRDesign.waiting_for_fill)
@@ -165,10 +167,15 @@ async def admin_panel(message: Message):
         return
 
     await message.answer(
-        "🛠️ **Админ-панель QR Designer Bot**\n\n"
+        "<b>🛠️ Админ-панель QR Designer Bot</b>\n\n"
         "Выберите действие:",
         reply_markup=get_admin_keyboard()
     )
+
+
+@dp.message(Command("id"))
+async def cmd_id(message: Message):
+    await message.answer(f"🆔 Ваш ID: <code>{message.from_user.id}</code>")
 
 
 # Обработчики быстрых кнопок
@@ -183,7 +190,7 @@ async def quick_create_qr(message: Message):
 @dp.message(F.text == "⚙️ Настройки дизайна")
 async def quick_settings(message: Message):
     await message.answer(
-        "⚙️ **Настройки дизайна**",
+        "<b>⚙️ Настройки дизайна</b>",
         reply_markup=get_settings_keyboard()
     )
 
@@ -214,7 +221,7 @@ async def quick_stats(message: Message):
     stats = user_stats.get(user_id, {})
 
     await message.answer(
-        f"📊 **Ваша статистика:**\n\n"
+        f"<b>📊 Ваша статистика:</b>\n\n"
         f"• Текущие цвета:\n"
         f"  Заливка: {settings.get('fill_color', 'черный')}\n"
         f"  Фон: {settings.get('back_color', 'белый')}\n"
@@ -226,15 +233,16 @@ async def quick_stats(message: Message):
 @dp.message(F.text == "ℹ️ Помощь")
 async def quick_help(message: Message):
     await message.answer(
-        "ℹ️ **Помощь по боту:**\n\n"
+        "<b>ℹ️ Помощь по боту:</b>\n\n"
         "• Отправьте ссылку для создания QR-кода\n"
         "• Используйте настройки для изменения цветов\n"
         "• Поддерживаются цвета в HEX-формате (#FF0000)\n\n"
-        "**Команды:**\n"
+        "<b>Команды:</b>\n"
         "/start - Главное меню\n"
         "/design - Настройка цветов\n"
         "/reset - Сброс настроек\n"
-        "/admin - Админ-панель (только для админов)",
+        "/admin - Админ-панель (только для админов)\n"
+        "/id - Показать ваш ID",
         reply_markup=get_main_keyboard()
     )
 
@@ -253,7 +261,7 @@ async def process_fill_color(message: Message, state: FSMContext):
         "• #FFFFFF - белый (по умолчанию)\n"
         "• #FFFF00 - желтый\n"
         "• #00FF00 - зеленый\n\n"
-        "Пример: #FFFFFF"
+        "<i>Пример: #FFFFFF</i>"
     )
     await state.set_state(QRDesign.waiting_for_back)
 
@@ -268,7 +276,7 @@ async def process_back_color(message: Message, state: FSMContext):
     await message.answer(
         "✅ Настройки дизайна сохранены!\n\n"
         "Теперь отправьте мне ссылку для создания QR-кода\n"
-        "Пример: https://example.com",
+        "<i>Пример: https://example.com</i>",
         reply_markup=get_main_keyboard()
     )
     await state.set_state(QRDesign.waiting_for_url)
@@ -288,7 +296,7 @@ async def process_url(message: Message, state: FSMContext):
 
         await message.answer_photo(
             photo=qr_file,
-            caption=f"✅ Ваш QR-код\n\n"
+            caption=f"✅ <b>Ваш QR-код</b>\n\n"
                     f"Ссылка: {message.text}\n"
                     f"Цвет: {fill_color}\n"
                     f"Фон: {back_color}",
@@ -323,7 +331,7 @@ async def admin_actions(callback: CallbackQuery, state: FSMContext):
     if action == "admin_stats":
         stats = await get_bot_stats()
         await callback.message.edit_text(
-            f"📊 **Статистика бота:**\n\n"
+            f"<b>📊 Статистика бота:</b>\n\n"
             f"• Пользователей: {stats['users_count']}\n"
             f"• QR-кодов создано: {stats['qr_count']}\n"
             f"• Активных за сутки: {stats['active_today']}\n"
@@ -336,7 +344,7 @@ async def admin_actions(callback: CallbackQuery, state: FSMContext):
 
     elif action == "admin_broadcast":
         await callback.message.edit_text(
-            "📢 **Рассылка сообщений**\n\n"
+            "<b>📢 Рассылка сообщений</b>\n\n"
             "Отправьте сообщение для рассылки всем пользователям:",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="◀️ Отмена", callback_data="admin_back")]
@@ -347,7 +355,7 @@ async def admin_actions(callback: CallbackQuery, state: FSMContext):
     elif action == "admin_users":
         users_list = await get_recent_users()
         await callback.message.edit_text(
-            f"👥 **Последние пользователи:**\n\n{users_list}",
+            f"<b>👥 Последние пользователи:</b>\n\n{users_list}",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="◀️ Назад", callback_data="admin_back")]
             ])
@@ -394,7 +402,7 @@ async def process_broadcast(message: Message, state: FSMContext, bot: Bot):
 async def get_bot_stats():
     today = datetime.now().date()
     active_today = sum(1 for stats in user_stats.values()
-                       if stats.get('last_active').date() == today)
+                       if stats.get('last_active') and stats.get('last_active').date() == today)
 
     return {
         "users_count": len(user_stats),
@@ -408,13 +416,19 @@ async def get_recent_users():
     if not user_stats:
         return "Нет данных о пользователях"
 
-    recent_users = sorted(user_stats.items(),
-                          key=lambda x: x[1].get('last_active', datetime.min),
-                          reverse=True)[:10]
+    # Фильтруем пользователей с данными о последней активности
+    recent_users = sorted(
+        [(user_id, stats) for user_id, stats in user_stats.items() if stats.get('last_active')],
+        key=lambda x: x[1].get('last_active', datetime.min),
+        reverse=True
+    )[:10]
 
-    result = "Последние 10 пользователей:\n\n"
+    if not recent_users:
+        return "Нет данных о пользователях"
+
+    result = "<b>Последние 10 пользователей:</b>\n\n"
     for user_id, stats in recent_users:
-        result += f"👤 ID: {user_id}\n"
+        result += f"👤 ID: <code>{user_id}</code>\n"
         result += f"   QR-кодов: {stats.get('qr_count', 0)}\n"
         result += f"   Активен: {stats.get('last_active').strftime('%Y-%m-%d %H:%M')}\n\n"
 
