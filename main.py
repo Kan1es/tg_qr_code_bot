@@ -12,6 +12,7 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.enums import ParseMode
+from aiogram.client.default import DefaultBotProperties
 from dotenv import load_dotenv
 
 # Загружаем переменные из .env файла
@@ -34,8 +35,11 @@ API_TOKEN = os.getenv('BOT_TOKEN')
 if not API_TOKEN:
     raise ValueError("BOT_TOKEN not found in .env file")
 
-# Создаем бота с указанием parse_mode
-bot = Bot(token=API_TOKEN, parse_mode=ParseMode.HTML)
+# Создаем бота с правильной инициализацией для aiogram 3.7+
+bot = Bot(
+    token=API_TOKEN,
+    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
+)
 dp = Dispatcher()
 admin_router = Router()
 
@@ -220,13 +224,17 @@ async def quick_stats(message: Message):
     settings = user_settings.get(user_id, {})
     stats = user_stats.get(user_id, {})
 
+    last_active = stats.get('last_active', 'нет данных')
+    if last_active != 'нет данных':
+        last_active = last_active.strftime('%Y-%m-%d %H:%M')
+
     await message.answer(
         f"<b>📊 Ваша статистика:</b>\n\n"
         f"• Текущие цвета:\n"
         f"  Заливка: {settings.get('fill_color', 'черный')}\n"
         f"  Фон: {settings.get('back_color', 'белый')}\n"
         f"• QR-кодов создано: {stats.get('qr_count', 0)}\n"
-        f"• Последняя активность: {stats.get('last_active', 'нет данных')}"
+        f"• Последняя активность: {last_active}"
     )
 
 
